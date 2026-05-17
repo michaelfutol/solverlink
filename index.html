@@ -8880,7 +8880,7 @@
                 const ey = ep.y * state.scale + state.offsetY;
 
                 // Load intensity color (blue→orange→red)
-                const w = beam.totalLineLoad || 0;
+                const w = beam.totalLineLoad || beam.w || 0;
                 const ratio = maxW > 0 ? Math.min(w / maxW, 1) : 0;
                 const r = Math.round(30 + 200 * ratio);
                 const g = Math.round(120 - 60 * ratio);
@@ -8921,9 +8921,22 @@
                 // Left reaction
                 ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx, sy + arrowLen); ctx.stroke();
                 ctx.beginPath(); ctx.moveTo(sx - 3, sy + arrowLen - 4); ctx.lineTo(sx, sy + arrowLen); ctx.lineTo(sx + 3, sy + arrowLen - 4); ctx.stroke();
+                if (beam.Rleft !== undefined) {
+                    ctx.font = `bold ${Math.max(7, fontSize - 2)}px Inter`;
+                    ctx.fillStyle = '#10b981';
+                    ctx.textAlign = 'left';
+                    ctx.fillText(`${beam.Rleft.toFixed(1)} kN`, sx + 4, sy + arrowLen / 2);
+                }
+
                 // Right reaction
                 ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex, ey + arrowLen); ctx.stroke();
                 ctx.beginPath(); ctx.moveTo(ex - 3, ey + arrowLen - 4); ctx.lineTo(ex, ey + arrowLen); ctx.lineTo(ex + 3, ey + arrowLen - 4); ctx.stroke();
+                if (beam.Rright !== undefined) {
+                    ctx.font = `bold ${Math.max(7, fontSize - 2)}px Inter`;
+                    ctx.fillStyle = '#10b981';
+                    ctx.textAlign = 'left';
+                    ctx.fillText(`${beam.Rright.toFixed(1)} kN`, ex + 4, ey + arrowLen / 2);
+                }
 
                 ctx.restore();
             }

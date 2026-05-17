@@ -226,8 +226,13 @@ const EngineLoads = (function () {
      */
     function calculateBeamReactions(beams) {
         for (let beam of beams) {
+            // Include factored self-weight in the total line load for presentation and accurate reactions
+            const selfWeightPerM = beam.selfWeightPerM || (beam.selfWeight > 0 && beam.span > 0 ? beam.selfWeight / beam.span : 0);
+            const factoredSW = selfWeightPerM * 1.2;
+            beam.totalLineLoad = (beam.w || 0) + factoredSW; // beam.w already includes slab + wall loads
+
             if (beam.isCantilever) {
-                const totalLoad = beam.w * beam.span;
+                const totalLoad = beam.totalLineLoad * beam.span;
                 if (beam.startCol) {
                     beam.Rleft = totalLoad;
                     beam.Rright = 0;
@@ -236,11 +241,11 @@ const EngineLoads = (function () {
                     beam.Rright = totalLoad;
                 }
             } else if (beam.isEdgeBeam) {
-                beam.Rleft = beam.w * beam.span / 2;
-                beam.Rright = beam.w * beam.span / 2;
+                beam.Rleft = beam.totalLineLoad * beam.span / 2;
+                beam.Rright = beam.totalLineLoad * beam.span / 2;
             } else {
-                beam.Rleft = beam.w * beam.span / 2;
-                beam.Rright = beam.w * beam.span / 2;
+                beam.Rleft = beam.totalLineLoad * beam.span / 2;
+                beam.Rright = beam.totalLineLoad * beam.span / 2;
             }
         }
     }
@@ -266,19 +271,14 @@ const EngineLoads = (function () {
             }
 
             let floorLoad = 0;
-            let beamDL = 0;
             for (let beam of beams) {
                 if (beam.startCol === col.id) floorLoad += beam.Rleft;
                 if (beam.endCol === col.id) floorLoad += beam.Rright;
-
-                if (beam.selfWeight) {
-                    const halfWeight = beam.selfWeight / 2 * 1.2;
-                    if (beam.startCol === col.id) beamDL += halfWeight;
-                    if (beam.endCol === col.id) beamDL += halfWeight;
-                }
             }
-            const totalFloorLoad = floorLoad + beamDL;
-            col.floorLoads.push({ floorId, load: totalFloorLoad, slabLoad: floorLoad, beamDL: beamDL });
+            
+            // beamDL is now baked into the Rleft/Rright values, so floorLoad represents the total floor reaction.
+            const totalFloorLoad = floorLoad;
+            col.floorLoads.push({ floorId, load: totalFloorLoad, slabLoad: floorLoad, beamDL: 0 });
             col.totalLoad += totalFloorLoad;
             col.loadPerFloor = totalFloorLoad;
         }
