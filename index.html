@@ -1493,6 +1493,7 @@
             <button class="tool-btn non-mvp" onclick="generateTANReport()" title="Open Technical Analysis Notes report">TAN</button>
             <button class="tool-btn non-mvp" onclick="exportToDXF()" title="Export to AutoCAD DXF">DXF</button>
             <button class="tool-btn non-mvp" onclick="exportToIFC()" title="Export to IFC (BIM)">IFC</button>
+            <span style="font-size: 0.75rem; color: #b45309; margin-right: 12px; font-weight: 600;" title="STAAD export is a baseline starter model only; the engineer must verify the model before design.">⚠️ SFFA Baseline Only</span>
             <button class="tool-btn" onclick="exportToSTAAD()" title="Export to STAAD.Pro">STAAD</button>
             <button class="tool-btn" onclick="exportToETABS()" title="Experimental: ETABS 22.6 import is not validated yet">ETABS*</button>
         </div>
@@ -3510,6 +3511,25 @@
 
     <!-- ========== JAVASCRIPT ========== -->
     <script>
+        // ========== SFFA MVP GLOBAL ERROR HANDLING ==========
+        window.onerror = function (message, source, lineno, colno, error) {
+            console.error('Global Error:', message, 'at', source, lineno + ':' + colno);
+            const statusText = document.getElementById('statusText');
+            if (statusText) {
+                statusText.textContent = `Crash: ${message} (Line ${lineno})`;
+                statusText.style.color = 'var(--danger)';
+            }
+        };
+
+        window.addEventListener('unhandledrejection', function (event) {
+            console.error('Unhandled Promise Rejection:', event.reason);
+            const statusText = document.getElementById('statusText');
+            if (statusText) {
+                statusText.textContent = `Promise Error: ${event.reason}`;
+                statusText.style.color = 'var(--danger)';
+            }
+        });
+
         // ========================================
         // FUTOLSTRUCTURE - CORE ENGINE
         // ========================================
@@ -14976,8 +14996,8 @@ function populateBOM() {
 
             try {
                 const std = generateSTAADContent();
-                downloadBlob(std, 'TributaryPro_' + new Date().toISOString().split('T')[0] + '.std');
-                alert('STAAD Pro model exported!\n\nFile includes:\n- Joint coordinates\n- Member incidences\n- Prismatic sections\n- DEFINE MATERIAL (Concrete)\n- Fixed supports\n- Dead + Live loads\n- NSCP load combinations\n- ACI concrete design commands\n\nReady to run in STAAD.Pro 2024!');
+                downloadBlob(std, 'SolverLink_SFFA_' + new Date().toISOString().split('T')[0] + '.std');
+                alert('STAAD Pro model exported!\n\n⚠️ DOCTRINE WARNING: STAAD export is a baseline starter model only. The engineer must rigorously verify all topology, incidences, and tributary loads before proceeding to final design.\n\nFile includes:\n- Joint coordinates\n- Member incidences\n- Prismatic sections\n- Fixed supports\n- Dead + Live loads\n- NSCP load combinations');
             } catch (err) {
                 console.error('STAAD export failed:', err);
                 alert('Export failed: ' + err.message);

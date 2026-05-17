@@ -37,7 +37,7 @@ SolverLink is built for ultimate portability and zero-dependency deployment.
 *   **Graphics & Visualization:** 
     *   `THREE.js` for lightweight 3D frame rendering
     *   `Canvas API` for dynamic, AutoCAD-style 2D structural plans
-*   **Architecture:** Entirely client-side execution. No backend required.
+*   **Architecture:** Client-side browser application utilizing local JS engine modules (`engine/loads.js`, `engine/tributary.js`). No backend required.
 
 ---
 
@@ -47,12 +47,12 @@ SolverLink is built for ultimate portability and zero-dependency deployment.
 3.  **Tributary Analysis:** View automatic beam/slab load distributions.
 4.  **Reaction Takedown:** Review cumulative foundation support forces.
 5.  **Validate:** Pass the strict internal model integrity gate.
-6.  **Export:** Handoff to STAAD.Pro for final structural analysis.
+6.  **Export:** Handoff to STAAD.Pro for final structural analysis (ETABS/SAP2000 are experimental).
 
 ---
 
 ## 🚀 Getting Started
-Because SolverLink is a single-file application, running it requires zero configuration.
+Because SolverLink is a lean client-side application, running it requires zero configuration.
 
 1. Clone the repository:
    ```bash
