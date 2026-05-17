@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>🏗️ SolverLink</h1>
+  <h1>SolverLink</h1>
   <p><strong>A Web-Based Lean Structural Modeler for Rapid Handoff</strong></p>
   
   <p>
