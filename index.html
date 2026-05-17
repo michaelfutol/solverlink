@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FutolStructure | Structural Engineering</title>
+    <title>SolverLink | Structural Handoff</title>
     <style>
         /* ========== GOOGLE FONTS ========== */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
@@ -370,6 +370,17 @@
             height: calc(100vh - 44px - 24px);
         }
 
+        .app-container.schedule-mode {
+            grid-template-columns: 0px 1fr 0px;
+        }
+        .app-container.schedule-mode > .panel:first-child,
+        .app-container.schedule-mode > .panel:last-child {
+            display: none !important;
+        }
+        .app-container.schedule-mode > .canvas-container {
+            grid-column: 2;
+        }
+
         .panel {
             background: var(--panel-bg);
             border-right: 1px solid var(--border);
@@ -545,6 +556,8 @@
             background: var(--toolbar-bg);
             min-height: 0;
             overflow: hidden;
+            /* Ensure container fills its grid cell so .canvas-wrapper gets real height */
+            height: 100%;
         }
 
         .canvas-toolbar {
@@ -588,6 +601,10 @@
             flex: 1;
             position: relative;
             overflow: hidden;
+            min-height: 0;
+            /* Ensure wrapper fills parent even when canvas is hidden (schedule-mode) */
+            width: 100%;
+            height: 100%;
         }
 
         #mainCanvas {
@@ -1425,6 +1442,10 @@
                 grid-template-columns: 260px 1fr 260px;
             }
         }
+        /* SolverBridge MVP Mode overrides */
+        body.solverbridge-mode .non-mvp {
+            display: none !important;
+        }
     </style>
 
     <!-- v2.4: Three.js for 3D View -->
@@ -1432,7 +1453,7 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 
-<body>
+<body class="solverbridge-mode">
     <!-- ========== HEADER ========== -->
     <header class="header">
         <!-- Logo + Menu -->
@@ -1447,9 +1468,11 @@
                 <button class="menu-item" onclick="saveProject(true); toggleDropdown()">Save Project As...</button>
                 <button class="menu-item" onclick="openProject(); toggleDropdown()">Open Project (.fstr/.json)</button>
                 <div class="menu-item-header">Export</div>
-                <button class="menu-item" onclick="exportResults(); toggleDropdown()">PDF Report</button>
-                <button class="menu-item" onclick="exportToDXF(); toggleDropdown()">AutoCAD DXF</button>
-                <button class="menu-item" onclick="exportToIFC(); toggleDropdown()">IFC (BIM)</button>
+                <button class="menu-item non-mvp" onclick="plotCurrentPlanSheet(); toggleDropdown()">Plot / Print Current Plan</button>
+                <button class="menu-item non-mvp" onclick="exportResults(); toggleDropdown()">PDF Report</button>
+                <button class="menu-item non-mvp" onclick="generateTANReport(); toggleDropdown()">TAN Report</button>
+                <button class="menu-item non-mvp" onclick="exportToDXF(); toggleDropdown()">AutoCAD DXF</button>
+                <button class="menu-item non-mvp" onclick="exportToIFC(); toggleDropdown()">IFC (BIM)</button>
                 <button class="menu-item" onclick="exportToSTAAD(); toggleDropdown()">STAAD.Pro</button>
                 <button class="menu-item" onclick="exportToETABS(); toggleDropdown()" title="Experimental: ETABS 22.6 import is not validated yet">ETABS/SAP (Experimental)</button>
                 <div class="menu-item-header">Theme</div>
@@ -1457,7 +1480,7 @@
                 <button class="menu-item" onclick="setTheme('light'); toggleDropdown()">Light</button>
                 <button class="menu-item" onclick="setTheme('blueprint'); toggleDropdown()">Blueprint</button>
             </div>
-            <span style="font-weight: 700; font-size: 0.88rem; color: var(--text-primary); letter-spacing: -0.01em;">FutolStructure</span>
+            <span style="font-weight: 700; font-size: 0.88rem; color: var(--text-primary); letter-spacing: -0.01em;">SolverLink</span>
             <span style="font-size: 0.58rem; color: var(--text-muted); font-weight: 500; padding: 1px 5px; background: var(--surface); border: 1px solid var(--border); border-radius: 3px;">v3.16</span>
         </div>
         <!-- Action Toolbar -->
@@ -1465,9 +1488,11 @@
             <button class="tool-btn" onclick="calculate()" style="background: var(--primary); color: #fff; font-weight: 600;">Run Analysis</button>
             <button class="tool-btn" onclick="refreshView()" title="Recalculate and refresh all views">Refresh</button>
             <span class="toolbar-separator"></span>
-            <button class="tool-btn" onclick="exportResults()" title="Generate PDF Report">Report</button>
-            <button class="tool-btn" onclick="exportToDXF()" title="Export to AutoCAD DXF">DXF</button>
-            <button class="tool-btn" onclick="exportToIFC()" title="Export to IFC (BIM)">IFC</button>
+            <button class="tool-btn non-mvp" onclick="plotCurrentPlanSheet()" title="Plot/print current plan sheet">Plot</button>
+            <button class="tool-btn non-mvp" onclick="exportResults()" title="Generate PDF Report">Report</button>
+            <button class="tool-btn non-mvp" onclick="generateTANReport()" title="Open Technical Analysis Notes report">TAN</button>
+            <button class="tool-btn non-mvp" onclick="exportToDXF()" title="Export to AutoCAD DXF">DXF</button>
+            <button class="tool-btn non-mvp" onclick="exportToIFC()" title="Export to IFC (BIM)">IFC</button>
             <button class="tool-btn" onclick="exportToSTAAD()" title="Export to STAAD.Pro">STAAD</button>
             <button class="tool-btn" onclick="exportToETABS()" title="Experimental: ETABS 22.6 import is not validated yet">ETABS*</button>
         </div>
@@ -1632,8 +1657,8 @@
                 </div>
             </div>
 
-            <!-- v2.5: Footing Parameters -->
-            <div class="param-group">
+            <!-- v2.5: Footing Parameters (hidden in SolverLink MVP) -->
+            <div class="param-group non-mvp">
                 <h3>Footing Parameters</h3>
                 <div class="param-grid">
                     <div class="param-item">
@@ -1726,56 +1751,66 @@
                     <!-- PLANS -->
                     <span class="plan-tab-group-label">Plans</span>
                     <button class="plan-tab active" id="tabStructural" onclick="setPlanTab('structural')">Layout</button>
-                    <button class="plan-tab" id="tabAnalysis" onclick="setPlanTab('analysis')">Tributary</button>
-                    <button class="plan-tab" id="tabFoundation" onclick="setPlanTab('foundation')">Foundation</button>
+                    <button class="plan-tab" id="tabReactions" onclick="setPlanTab('reactions')">Reactions</button>
+
+                    <span class="plan-tab-separator"></span>
+                    <span class="plan-tab-group-label">Tributary</span>
+                    <button class="plan-tab" id="tabTribSlabs" onclick="setPlanTab('analysis')">Slabs</button>
+                    <button class="plan-tab" id="tabTribBeams" onclick="setPlanTab('tribBeams')">Beams</button>
+                    <button class="plan-tab" id="tabTribCols" onclick="setPlanTab('tribCols')">Columns</button>
 
                     <span class="plan-tab-separator"></span>
                     <span class="plan-tab-group-label">Schedules</span>
                     <button class="plan-tab" id="tabColSchedule" onclick="setPlanTab('colSchedule')">Columns</button>
                     <button class="plan-tab" id="tabBeamSchedule" onclick="setPlanTab('beamSchedule')">Beams</button>
-                    <button class="plan-tab" id="tabFootingSchedule" onclick="setPlanTab('footingSchedule')">Footings</button>
+                    <button class="plan-tab non-mvp" id="tabFootingSchedule" onclick="setPlanTab('footingSchedule')">Footings</button>
                     <button class="plan-tab" id="tabSlabSchedule" onclick="setPlanTab('slabSchedule')">Slabs</button>
-                    <button class="plan-tab" id="tabRebarSchedule" onclick="setPlanTab('rebarSchedule')">Rebar</button>
-                    <button class="plan-tab" id="tabBBS" onclick="setPlanTab('bbs')">BBS</button>
+                    <button class="plan-tab non-mvp" id="tabRebarSchedule" onclick="setPlanTab('rebarSchedule')">Rebar</button>
+                    <button class="plan-tab non-mvp" id="tabBBS" onclick="setPlanTab('bbs')">BBS</button>
 
                     <span class="plan-tab-separator"></span>
-                    <span class="plan-tab-group-label">Design</span>
-                    <button class="plan-tab" id="tabBeamDesign" onclick="setPlanTab('beamDesign')">Beam</button>
-                    <button class="plan-tab" id="tabColDesign" onclick="setPlanTab('colDesign')">Column</button>
-                    <button class="plan-tab" id="tabSlabDesign" onclick="setPlanTab('slabDesign')">Slab</button>
-                    <button class="plan-tab" id="tabBlockwall" onclick="setPlanTab('blockwall')">Blockwall</button>
-                    <button class="plan-tab" id="tabStaircase" onclick="setPlanTab('staircase')">Staircase</button>
-                    <button class="plan-tab" id="tabWaterTank" onclick="setPlanTab('waterTank')">Tank</button>
-                    <button class="plan-tab" id="tabRetainingWall" onclick="setPlanTab('retainingWall')">Ret. Wall</button>
-                    <button class="plan-tab" id="tabCombinedFtg" onclick="setPlanTab('combinedFtg')">Comb. Ftg</button>
+                    <span class="plan-tab-group-label">Validation</span>
+                    <button class="plan-tab" id="tabValidate" onclick="setPlanTab('validate')">Validate</button>
 
-                    <span class="plan-tab-separator"></span>
-                    <span class="plan-tab-group-label">Checks</span>
-                    <button class="plan-tab" id="tabCrackWidth" onclick="setPlanTab('crackWidth')">Crack</button>
-                    <button class="plan-tab" id="tabSlenderness" onclick="setPlanTab('slenderness')">Slender</button>
-                    <button class="plan-tab" id="tabDuctile" onclick="setPlanTab('ductile')">Ductile</button>
-                    <button class="plan-tab" id="tabDeflection" onclick="setPlanTab('deflection')">Deflect</button>
-                    <button class="plan-tab" id="tabDevLength" onclick="setPlanTab('devLength')">Dev Len</button>
-                    <button class="plan-tab" id="tabTorsion" onclick="setPlanTab('torsion')">Torsion</button>
-                    <button class="plan-tab" id="tabFdnStability" onclick="setPlanTab('fdnStability')">Fdn Stab</button>
+                    <!-- Design/Checks/Loads/Output — hidden in SolverLink MVP -->
+                    <span class="plan-tab-separator non-mvp"></span>
+                    <span class="plan-tab-group-label non-mvp">Design</span>
+                    <button class="plan-tab non-mvp" id="tabBeamDesign" onclick="setPlanTab('beamDesign')">Beam</button>
+                    <button class="plan-tab non-mvp" id="tabColDesign" onclick="setPlanTab('colDesign')">Column</button>
+                    <button class="plan-tab non-mvp" id="tabSlabDesign" onclick="setPlanTab('slabDesign')">Slab</button>
+                    <button class="plan-tab non-mvp" id="tabBlockwall" onclick="setPlanTab('blockwall')">Blockwall</button>
+                    <button class="plan-tab non-mvp" id="tabStaircase" onclick="setPlanTab('staircase')">Staircase</button>
+                    <button class="plan-tab non-mvp" id="tabWaterTank" onclick="setPlanTab('waterTank')">Tank</button>
+                    <button class="plan-tab non-mvp" id="tabRetainingWall" onclick="setPlanTab('retainingWall')">Ret. Wall</button>
+                    <button class="plan-tab non-mvp" id="tabCombinedFtg" onclick="setPlanTab('combinedFtg')">Comb. Ftg</button>
 
-                    <span class="plan-tab-separator"></span>
-                    <span class="plan-tab-group-label">Loads</span>
-                    <button class="plan-tab" id="tabLoadSummary" onclick="setPlanTab('loadSummary')">Summary</button>
-                    <button class="plan-tab" id="tabLoadCombos" onclick="setPlanTab('loadCombos')">Combos</button>
-                    <button class="plan-tab" id="tabSeismic" onclick="setPlanTab('seismic')">Seismic</button>
-                    <button class="plan-tab" id="tabWind" onclick="setPlanTab('wind')">Wind</button>
+                    <span class="plan-tab-separator non-mvp"></span>
+                    <span class="plan-tab-group-label non-mvp">Checks</span>
+                    <button class="plan-tab non-mvp" id="tabCrackWidth" onclick="setPlanTab('crackWidth')">Crack</button>
+                    <button class="plan-tab non-mvp" id="tabSlenderness" onclick="setPlanTab('slenderness')">Slender</button>
+                    <button class="plan-tab non-mvp" id="tabDuctile" onclick="setPlanTab('ductile')">Ductile</button>
+                    <button class="plan-tab non-mvp" id="tabDeflection" onclick="setPlanTab('deflection')">Deflect</button>
+                    <button class="plan-tab non-mvp" id="tabDevLength" onclick="setPlanTab('devLength')">Dev Len</button>
+                    <button class="plan-tab non-mvp" id="tabTorsion" onclick="setPlanTab('torsion')">Torsion</button>
+                    <button class="plan-tab non-mvp" id="tabFdnStability" onclick="setPlanTab('fdnStability')">Fdn Stab</button>
 
-                    <span class="plan-tab-separator"></span>
-                    <span class="plan-tab-group-label">Output</span>
-                    <button class="plan-tab" id="tabBOM" onclick="setPlanTab('bom')">BOM</button>
-                    <button class="plan-tab" id="tabSteelSummary" onclick="setPlanTab('steelSummary')">Steel</button>
-                    <button class="plan-tab" id="tabCostEstimate" onclick="setPlanTab('costEstimate')">Cost</button>
-                    <button class="plan-tab" id="tabMixDesign" onclick="setPlanTab('mixDesign')">Mix</button>
-                    <button class="plan-tab" id="tabPDFReport" onclick="setPlanTab('pdfReport')">PDF</button>
-                    <button class="plan-tab" id="tabDashboard" onclick="setPlanTab('dashboard')">Dashboard</button>
-                    <button class="plan-tab" id="tabSettings" onclick="setPlanTab('settings')">Settings</button>
-                    <button class="plan-tab" id="tabAIAssistant" onclick="setPlanTab('aiAssistant')">AI</button>
+                    <span class="plan-tab-separator non-mvp"></span>
+                    <span class="plan-tab-group-label non-mvp">Loads</span>
+                    <button class="plan-tab non-mvp" id="tabLoadSummary" onclick="setPlanTab('loadSummary')">Summary</button>
+                    <button class="plan-tab non-mvp" id="tabLoadCombos" onclick="setPlanTab('loadCombos')">Combos</button>
+                    <button class="plan-tab non-mvp" id="tabSeismic" onclick="setPlanTab('seismic')">Seismic</button>
+                    <button class="plan-tab non-mvp" id="tabWind" onclick="setPlanTab('wind')">Wind</button>
+
+                    <span class="plan-tab-separator non-mvp"></span>
+                    <span class="plan-tab-group-label non-mvp">Output</span>
+                    <button class="plan-tab non-mvp" id="tabBOM" onclick="setPlanTab('bom')">BOM</button>
+                    <button class="plan-tab non-mvp" id="tabSteelSummary" onclick="setPlanTab('steelSummary')">Steel</button>
+                    <button class="plan-tab non-mvp" id="tabCostEstimate" onclick="setPlanTab('costEstimate')">Cost</button>
+                    <button class="plan-tab non-mvp" id="tabMixDesign" onclick="setPlanTab('mixDesign')">Mix</button>
+                    <button class="plan-tab non-mvp" id="tabPDFReport" onclick="setPlanTab('pdfReport')">PDF</button>
+                    <button class="plan-tab non-mvp" id="tabDashboard" onclick="setPlanTab('dashboard')">Dashboard</button>
+                    <button class="plan-tab non-mvp" id="tabSettings" onclick="setPlanTab('settings')">Settings</button>
+                    <button class="plan-tab non-mvp" id="tabAIAssistant" onclick="setPlanTab('aiAssistant')">AI</button>
                 </div>
 
                 <!-- Canvas Tools -->
@@ -1798,6 +1833,84 @@
                 <div id="container3D"></div>
 
                 <!-- v3.8: Schedule Panels (hidden by default) -->
+                <!-- Base Reactions Panel -->
+                <div id="panelReactions" class="schedule-panel" style="display:none;">
+                    <div class="schedule-header">
+                        <h3>Base Reactions</h3>
+                        <div class="schedule-summary">Preliminary / Model-derived loads for Solver Import</div>
+                    </div>
+                    <div class="schedule-table-wrapper">
+                        <table class="schedule-table">
+                            <thead>
+                                <tr>
+                                    <th>Column ID</th>
+                                    <th>Support Node</th>
+                                    <th>Support Type</th>
+                                    <th>P (Axial)</th>
+                                    <th>Vx (Shear)</th>
+                                    <th>Vy (Shear)</th>
+                                    <th>Mx (Moment)</th>
+                                    <th>My (Moment)</th>
+                                    <th>Load State</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyReactions"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Beam Tributary Panel -->
+                <div id="panelTribBeams" class="schedule-panel" style="display:none;">
+                    <div class="schedule-header">
+                        <h3>Beam Tributary Loads</h3>
+                        <div class="schedule-summary">Preliminary tributary line loads on beams</div>
+                    </div>
+                    <div class="schedule-table-wrapper">
+                        <table class="schedule-table">
+                            <thead>
+                                <tr>
+                                    <th>Beam ID</th>
+                                    <th>Floor</th>
+                                    <th>Span (m)</th>
+                                    <th>Trib Slab Load</th>
+                                    <th>Wall Load</th>
+                                    <th>Self-Weight</th>
+                                    <th>Total Line Load</th>
+                                    <th>Left Reaction</th>
+                                    <th>Right Reaction</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyTribBeams"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Column Tributary Panel -->
+                <div id="panelTribCols" class="schedule-panel" style="display:none;">
+                    <div class="schedule-header">
+                        <h3>Column Tributary Load Takedown</h3>
+                        <div class="schedule-summary">Cumulative load takedown summary</div>
+                    </div>
+                    <div class="schedule-table-wrapper">
+                        <table class="schedule-table">
+                            <thead>
+                                <tr>
+                                    <th>Column ID</th>
+                                    <th>Floor</th>
+                                    <th>Classification</th>
+                                    <th>Beam Reactions</th>
+                                    <th>Slab Trace</th>
+                                    <th>Self-Weight</th>
+                                    <th>Other Loads</th>
+                                    <th>Total Service</th>
+                                    <th>Total Factored</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyTribCols"></tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <!-- Column Schedule Panel -->
                 <div id="panelColSchedule" class="schedule-panel" style="display:none;">
                     <div class="schedule-header">
@@ -1815,7 +1928,7 @@
                                     <th style="width:55px;">B/X (mm)</th>
                                     <th style="width:55px;">H/Y (mm)</th>
                                     <th style="width:70px;">Load (kN)</th>
-                                    <th style="width:70px;">Footing ID</th>
+                                    <th style="width:70px;" class="non-mvp">Footing ID</th>
                                 </tr>
                             </thead>
                             <tbody id="colScheduleBody"></tbody>
@@ -1986,7 +2099,7 @@
                         <td style="text-align:right; padding:4px 6px;" id="sumTieBeamDL">-</td>
                         <td style="padding:4px 6px; color: var(--text-muted);">kN</td>
                     </tr>
-                    <tr style="border-bottom: 2px solid var(--border);">
+                    <tr style="border-bottom: 2px solid var(--border);" class="non-mvp">
                         <td style="padding:4px 6px; font-size:0.7rem;">Footings</td>
                         <td style="text-align:right; padding:4px 6px;" id="sumFootingDL">-</td>
                         <td style="padding:4px 6px; color: var(--text-muted);">kN</td>
@@ -2397,6 +2510,19 @@
                 </div>
             </div>
 
+
+
+            <div id="panelValidate" class="schedule-panel" style="display:none;">
+                <div class="schedule-header">
+                    <h3>SolverBridge Validation</h3>
+                    <div class="schedule-nav-actions">
+                        <button class="schedule-return-btn" onclick="returnToLastPlan()">← Back to Plan</button>
+                    </div>
+                </div>
+                <div id="validationContent" style="padding:12px; font-size:0.8rem; color:var(--text-secondary);">
+                    Pre-export model validation checklist will appear here.
+                </div>
+            </div>
 
             <!-- v3.13: Bar Bending Schedule -->
             <div id="panelBBS" class="schedule-panel" style="display:none;">
@@ -3239,7 +3365,7 @@
                         style="background:#1e3a5f; color:white; border:none; padding:8px 16px; border-radius:4px; cursor:pointer;">BEAMS</button>
                     <button id="schedTabColumns" class="sched-tab" onclick="switchScheduleTab('columns')"
                         style="background:#d1d5db; color:#333; border:none; padding:8px 16px; border-radius:4px; cursor:pointer;">COLUMNS</button>
-                    <button id="schedTabFootings" class="sched-tab" onclick="switchScheduleTab('footings')"
+                    <button id="schedTabFootings" class="sched-tab non-mvp" onclick="switchScheduleTab('footings')"
                         style="background:#d1d5db; color:#333; border:none; padding:8px 16px; border-radius:4px; cursor:pointer;">FOOTINGS</button>
                 </div>
             </div>
@@ -4529,6 +4655,11 @@
 
         // ========== v3.0: PLAN TABS & LAYER TOGGLES ==========
         let currentPlanTab = 'structural';  // 'structural' first, then 'analysis' for tributary
+        let lastStructuralTab = 'structural';
+
+        function returnToLastPlan() {
+            setPlanTab(lastStructuralTab || 'structural');
+        }
         let layerVisibility = {
             grid: true,
             areas: true,
@@ -4549,7 +4680,10 @@
 
             // Map tab names to button IDs
             const tabBtnMap = {
-                'analysis': 'tabAnalysis',
+                'analysis': 'tabTribSlabs',
+                'reactions': 'tabReactions',
+                'tribBeams': 'tabTribBeams',
+                'tribCols': 'tabTribCols',
                 'structural': 'tabStructural',
                 'foundation': 'tabFoundation',
                 'colSchedule': 'tabColSchedule',
@@ -4567,6 +4701,7 @@
                 'slabDesign': 'tabSlabDesign',
                 'staircase': 'tabStaircase',
                 'waterTank': 'tabWaterTank',
+                'validate': 'tabValidate',
                 'bbs': 'tabBBS',
                 'crackWidth': 'tabCrackWidth',
                 'slenderness': 'tabSlenderness',
@@ -4594,7 +4729,7 @@
             }
 
             // Hide all schedule panels
-            const schedulePanels = ['panelColSchedule', 'panelBeamSchedule', 'panelFootingSchedule', 'panelSlabSchedule', 'panelBlockwall', 'panelLoadSummary', 'panelRebarSchedule', 'panelBOM', 'panelSeismic', 'panelWind', 'panelBeamDesign', 'panelColDesign', 'panelSlabDesign', 'panelStaircase', 'panelWaterTank', 'panelBBS', 'panelCrackWidth', 'panelSlenderness', 'panelDuctile', 'panelDeflection', 'panelLoadCombos', 'panelDevLength', 'panelFdnStability', 'panelPDFReport', 'panelDashboard', 'panelSettings', 'panelCostEstimate', 'panelSteelSummary', 'panelRetainingWall', 'panelCombinedFtg', 'panelTorsion', 'panelMixDesign', 'panelAIAssistant'];
+            const schedulePanels = ['panelReactions', 'panelTribBeams', 'panelTribCols', 'panelValidate', 'panelColSchedule', 'panelBeamSchedule', 'panelFootingSchedule', 'panelSlabSchedule', 'panelBlockwall', 'panelLoadSummary', 'panelRebarSchedule', 'panelBOM', 'panelSeismic', 'panelWind', 'panelBeamDesign', 'panelColDesign', 'panelSlabDesign', 'panelStaircase', 'panelWaterTank', 'panelBBS', 'panelCrackWidth', 'panelSlenderness', 'panelDuctile', 'panelDeflection', 'panelLoadCombos', 'panelDevLength', 'panelFdnStability', 'panelPDFReport', 'panelDashboard', 'panelSettings', 'panelCostEstimate', 'panelSteelSummary', 'panelRetainingWall', 'panelCombinedFtg', 'panelTorsion', 'panelMixDesign', 'panelAIAssistant'];
             schedulePanels.forEach(id => {
                 const panel = document.getElementById(id);
                 if (panel) panel.style.display = 'none';
@@ -4604,13 +4739,18 @@
             const mainCanvas = document.getElementById('mainCanvas');
             const container3D = document.getElementById('container3D');
 
-            // v3.8: Handle schedule tabs
-            const isScheduleTab = ['colSchedule', 'beamSchedule', 'footingSchedule', 'slabSchedule', 'blockwall', 'loadSummary', 'rebarSchedule', 'bom', 'seismic', 'wind', 'beamDesign', 'colDesign', 'slabDesign', 'staircase', 'waterTank', 'bbs', 'crackWidth', 'slenderness', 'ductile', 'deflection', 'loadCombos', 'devLength', 'fdnStability', 'pdfReport', 'dashboard', 'settings', 'costEstimate', 'steelSummary', 'retainingWall', 'combinedFtg', 'torsion', 'mixDesign', 'aiAssistant'].includes(tab);
+            // v3.8: Handle schedule tabs (reactions, tribBeams, tribCols are now canvas-based plan views)
+            const isScheduleTab = ['validate', 'colSchedule', 'beamSchedule', 'footingSchedule', 'slabSchedule', 'blockwall', 'loadSummary', 'rebarSchedule', 'bom', 'seismic', 'wind', 'beamDesign', 'colDesign', 'slabDesign', 'staircase', 'waterTank', 'bbs', 'crackWidth', 'slenderness', 'ductile', 'deflection', 'loadCombos', 'devLength', 'fdnStability', 'pdfReport', 'dashboard', 'settings', 'costEstimate', 'steelSummary', 'retainingWall', 'combinedFtg', 'torsion', 'mixDesign', 'aiAssistant'].includes(tab);
+
+            if (!isScheduleTab) lastStructuralTab = tab;
+            
+            const appContainer = document.querySelector('.app-container');
 
             if (isScheduleTab) {
                 // Hide canvas, show schedule panel
                 if (mainCanvas) mainCanvas.style.display = 'none';
                 if (container3D) container3D.style.display = 'none';
+                if (appContainer) appContainer.classList.add('schedule-mode');
 
                 // v3.9: Defer schedule population to next frame for instant tab switch feel
                 requestAnimationFrame(() => {
@@ -4656,6 +4796,9 @@
                     } else if (tab === 'staircase') {
                         document.getElementById('panelStaircase').style.display = 'block';
                         calculateStaircase();
+                    } else if (tab === 'validate') {
+                        document.getElementById('panelValidate').style.display = 'block';
+                        if (typeof renderValidationPanel === 'function') renderValidationPanel();
                     } else if (tab === 'waterTank') {
                         document.getElementById('panelWaterTank').style.display = 'block';
                         calculateWaterTank();
@@ -4715,6 +4858,7 @@
                     }
                 });
             } else {
+                if (appContainer) appContainer.classList.remove('schedule-mode');
                 // Show canvas for plan tabs
                 if (mainCanvas) mainCanvas.style.display = 'block';
                 // v3.9 FIX: Properly exit 3D mode - hide container and remove active class
@@ -7499,6 +7643,24 @@
                 return; // Skip wireframe mode
             }
 
+            // MVP-010: Beam Tributary plan view
+            if (currentPlanTab === 'tribBeams') {
+                drawBeamTributaryPlan();
+                return;
+            }
+
+            // MVP-010: Column Tributary plan view
+            if (currentPlanTab === 'tribCols') {
+                drawColumnTributaryPlan();
+                return;
+            }
+
+            // MVP-010: Base Reactions plan view
+            if (currentPlanTab === 'reactions') {
+                drawReactionsPlan();
+                return;
+            }
+
             // v3.0: Draw gridlines when in beam adding mode OR grid toggle is ON (and layer is visible)
             if ((state.addingBeam || state.showSubGrid) && layerVisibility.grid) {
                 const gridSpacing = 1.0; // 1m spacing
@@ -8586,6 +8748,578 @@
                     }
                 }
             }
+        }
+
+        // ========== MVP-010: SHARED PLAN GRID HELPER ==========
+        function drawPlanGrid(title) {
+            if (!ctx) return;
+            const scaleFactor = Math.max(0.6, Math.min(2.0, state.scale / 50));
+            const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+            const totalWidth = state.xSpans.reduce((a, b) => a + b, 0);
+            const totalHeight = state.ySpans.reduce((a, b) => a + b, 0);
+
+            // Background
+            ctx.fillStyle = '#f8fafc';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Title banner
+            ctx.fillStyle = 'rgba(30, 58, 95, 0.92)';
+            ctx.fillRect(0, 0, canvas.width, 32);
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 13px Inter, Arial, sans-serif';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(title, 12, 16);
+
+            // Grid coordinates
+            let xCoords = [0];
+            for (let s of state.xSpans) xCoords.push(xCoords[xCoords.length - 1] + s);
+            let yCoords = [0];
+            for (let s of state.ySpans) yCoords.push(yCoords[yCoords.length - 1] + s);
+
+            // Gridlines
+            const bubbleR = 14 * scaleFactor;
+            ctx.strokeStyle = 'rgba(100, 116, 139, 0.35)';
+            ctx.lineWidth = 0.8;
+            ctx.setLineDash([6, 4]);
+            xCoords.forEach((x, i) => {
+                const px = x * state.scale + state.offsetX;
+                ctx.beginPath(); ctx.moveTo(px, state.offsetY - 30); ctx.lineTo(px, totalHeight * state.scale + state.offsetY + 30); ctx.stroke();
+                // Bubble
+                const by = state.offsetY - 60;
+                ctx.setLineDash([]);
+                ctx.fillStyle = '#475569'; ctx.beginPath(); ctx.arc(px, by, bubbleR, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.round(12 * scaleFactor)}px Inter`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(letters[i] || '', px, by);
+                ctx.setLineDash([6, 4]);
+            });
+            yCoords.forEach((y, i) => {
+                const py = y * state.scale + state.offsetY;
+                ctx.beginPath(); ctx.moveTo(state.offsetX - 30, py); ctx.lineTo(totalWidth * state.scale + state.offsetX + 30, py); ctx.stroke();
+                const bx = state.offsetX - 70;
+                ctx.setLineDash([]);
+                ctx.fillStyle = '#475569'; ctx.beginPath(); ctx.arc(bx, py, bubbleR, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.round(12 * scaleFactor)}px Inter`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText((i + 1).toString(), bx, py);
+                ctx.setLineDash([6, 4]);
+            });
+            ctx.setLineDash([]);
+
+            // Dimension labels
+            ctx.font = `bold ${Math.round(10 * scaleFactor)}px Inter`;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#334155';
+            for (let i = 0; i < state.xSpans.length; i++) {
+                const x1 = xCoords[i] * state.scale + state.offsetX;
+                const x2 = xCoords[i + 1] * state.scale + state.offsetX;
+                const topY = state.offsetY - 38;
+                ctx.strokeStyle = 'rgba(71,85,105,0.5)'; ctx.lineWidth = 0.8;
+                ctx.beginPath(); ctx.moveTo(x1, topY); ctx.lineTo(x2, topY); ctx.stroke();
+                ctx.fillText(state.xSpans[i].toFixed(1) + 'm', (x1 + x2) / 2, topY - 8);
+            }
+            for (let i = 0; i < state.ySpans.length; i++) {
+                const y1 = yCoords[i] * state.scale + state.offsetY;
+                const y2 = yCoords[i + 1] * state.scale + state.offsetY;
+                const leftX = state.offsetX - 42;
+                ctx.strokeStyle = 'rgba(71,85,105,0.5)'; ctx.lineWidth = 0.8;
+                ctx.beginPath(); ctx.moveTo(leftX, y1); ctx.lineTo(leftX, y2); ctx.stroke();
+                ctx.save(); ctx.translate(leftX - 8, (y1 + y2) / 2); ctx.rotate(-Math.PI / 2);
+                ctx.fillText(state.ySpans[i].toFixed(1) + 'm', 0, 0); ctx.restore();
+            }
+
+            return { xCoords, yCoords, scaleFactor, totalWidth, totalHeight };
+        }
+
+        // ========== MVP-010: BEAM TRIBUTARY PLAN VIEW ==========
+        function drawBeamTributaryPlan() {
+            const grid = drawPlanGrid('Beam Tributary — Line Loads & Reactions');
+            if (!grid) return;
+            const { xCoords, yCoords, scaleFactor } = grid;
+            const currentFloor = state.floors[state.currentFloorIndex];
+            const deletedBeams = currentFloor?.deletedBeams || [];
+
+            // Slab fills (light)
+            for (let slab of state.slabs) {
+                if (slab.isVoid) continue;
+                const x1 = slab.x1 * state.scale + state.offsetX;
+                const y1 = slab.y1 * state.scale + state.offsetY;
+                const w = (slab.lx || slab.width) * state.scale;
+                const h = (slab.ly || slab.height) * state.scale;
+                ctx.fillStyle = 'rgba(200, 220, 240, 0.2)';
+                ctx.fillRect(x1, y1, w, h);
+                ctx.strokeStyle = 'rgba(148, 163, 184, 0.4)'; ctx.lineWidth = 0.5;
+                ctx.strokeRect(x1, y1, w, h);
+            }
+
+            // Column markers (small gray squares)
+            for (let col of state.columns) {
+                if (col.active === false) continue;
+                const pos = getColumnPlanPosition(col);
+                const px = pos.x * state.scale + state.offsetX;
+                const py = pos.y * state.scale + state.offsetY;
+                const sz = 6 * scaleFactor;
+                ctx.fillStyle = '#64748b'; ctx.fillRect(px - sz, py - sz, sz * 2, sz * 2);
+            }
+
+            // Find max load for color scaling
+            const allBeams = state.beams || [];
+            let maxW = 1;
+            allBeams.forEach(b => { if (b.totalLineLoad > maxW) maxW = b.totalLineLoad; });
+
+            // Draw beams with load intensity
+            const fontSize = Math.max(8, Math.round(9 * scaleFactor));
+            for (let beam of allBeams) {
+                if (beam.deleted || deletedBeams.includes(beam.id)) continue;
+                const startCol = state.columns.find(c => c.id === beam.startCol);
+                const endCol = state.columns.find(c => c.id === beam.endCol);
+                if (!startCol || !endCol) continue;
+                const sp = getColumnPlanPosition(startCol);
+                const ep = getColumnPlanPosition(endCol);
+                const sx = sp.x * state.scale + state.offsetX;
+                const sy = sp.y * state.scale + state.offsetY;
+                const ex = ep.x * state.scale + state.offsetX;
+                const ey = ep.y * state.scale + state.offsetY;
+
+                // Load intensity color (blue→orange→red)
+                const w = beam.totalLineLoad || 0;
+                const ratio = maxW > 0 ? Math.min(w / maxW, 1) : 0;
+                const r = Math.round(30 + 200 * ratio);
+                const g = Math.round(120 - 60 * ratio);
+                const b2 = Math.round(200 - 180 * ratio);
+                const lineW = Math.max(3, 2 + 6 * ratio) * scaleFactor;
+
+                ctx.strokeStyle = `rgb(${r},${g},${b2})`;
+                ctx.lineWidth = lineW;
+                ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
+
+                // Beam ID label
+                const mx = (sx + ex) / 2, my = (sy + ey) / 2;
+                const isX = beam.direction === 'X';
+                ctx.save();
+                ctx.font = `bold ${fontSize}px Inter`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                // Background pill
+                const id = beam.id || '';
+                const idStr = typeof id === 'number' ? `BX-${id}` : id;
+                const tw = ctx.measureText(idStr).width + 8;
+                const labelOff = isX ? -lineW - 10 : lineW + 10;
+                const lx = mx + (isX ? 0 : labelOff), ly = my + (isX ? labelOff : 0);
+                ctx.fillStyle = 'rgba(255,255,255,0.88)';
+                ctx.fillRect(lx - tw / 2, ly - fontSize / 2 - 2, tw, fontSize + 4);
+                ctx.fillStyle = '#1e3a5f'; ctx.fillText(idStr, lx, ly);
+
+                // Line load label
+                const wStr = w > 0 ? `w=${w.toFixed(1)} kN/m` : 'w=TBD';
+                const tw2 = ctx.measureText(wStr).width + 6;
+                const ly2 = ly + fontSize + 4;
+                ctx.font = `${fontSize - 1}px Inter`;
+                ctx.fillStyle = 'rgba(255,255,255,0.85)';
+                ctx.fillRect(lx - tw2 / 2, ly2 - fontSize / 2, tw2, fontSize + 2);
+                ctx.fillStyle = w > 0 ? '#b45309' : '#94a3b8'; ctx.fillText(wStr, lx, ly2);
+
+                // Reaction arrows at ends
+                const arrowLen = 12 * scaleFactor;
+                ctx.strokeStyle = '#10b981'; ctx.lineWidth = 2 * scaleFactor;
+                // Left reaction
+                ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx, sy + arrowLen); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(sx - 3, sy + arrowLen - 4); ctx.lineTo(sx, sy + arrowLen); ctx.lineTo(sx + 3, sy + arrowLen - 4); ctx.stroke();
+                // Right reaction
+                ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex, ey + arrowLen); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(ex - 3, ey + arrowLen - 4); ctx.lineTo(ex, ey + arrowLen); ctx.lineTo(ex + 3, ey + arrowLen - 4); ctx.stroke();
+
+                ctx.restore();
+            }
+        }
+
+        // ========== MVP-010c: COLUMN TRIBUTARY PLAN VIEW (Real Structural Sketch) ==========
+        function drawColumnTributaryPlan() {
+            const grid = drawPlanGrid('Column Tributary Areas — Load Takedown');
+            if (!grid) return;
+            const { xCoords, yCoords, scaleFactor } = grid;
+            const fontSize = Math.max(8, Math.round(9 * scaleFactor));
+            const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+
+            // Build mid-span coordinate arrays (boundaries between tributary zones)
+            // Mid-X: halfway between each pair of X gridlines, plus 0 and totalWidth
+            const midX = [0];
+            for (let i = 0; i < state.xSpans.length; i++) {
+                midX.push(xCoords[i] + state.xSpans[i] / 2);
+            }
+            midX.push(xCoords[xCoords.length - 1]); // last gridline = boundary
+
+            const midY = [0];
+            for (let i = 0; i < state.ySpans.length; i++) {
+                midY.push(yCoords[i] + state.ySpans[i] / 2);
+            }
+            midY.push(yCoords[yCoords.length - 1]);
+
+            // Color palette for tributary zones (soft, distinct per column)
+            const tribColors = [
+                'rgba(59, 130, 246, 0.14)',   // blue
+                'rgba(16, 185, 129, 0.14)',   // green
+                'rgba(245, 158, 11, 0.14)',   // amber
+                'rgba(239, 68, 68, 0.12)',    // red
+                'rgba(139, 92, 246, 0.14)',   // violet
+                'rgba(236, 72, 153, 0.12)',   // pink
+                'rgba(20, 184, 166, 0.14)',   // teal
+                'rgba(251, 146, 60, 0.14)',   // orange
+                'rgba(99, 102, 241, 0.14)',   // indigo
+            ];
+            const tribStrokeColors = [
+                'rgba(59, 130, 246, 0.45)',
+                'rgba(16, 185, 129, 0.45)',
+                'rgba(245, 158, 11, 0.45)',
+                'rgba(239, 68, 68, 0.4)',
+                'rgba(139, 92, 246, 0.45)',
+                'rgba(236, 72, 153, 0.4)',
+                'rgba(20, 184, 166, 0.45)',
+                'rgba(251, 146, 60, 0.45)',
+                'rgba(99, 102, 241, 0.45)',
+            ];
+
+            // Draw tributary area regions for each column
+            let colIndex = 0;
+            for (let col of state.columns) {
+                if (col.active === false) continue;
+                const pos = getColumnPlanPosition(col);
+
+                // Find the column's grid indices
+                let xi = -1, yi = -1;
+                for (let i = 0; i < xCoords.length; i++) {
+                    if (Math.abs(pos.x - xCoords[i]) < 0.05) { xi = i; break; }
+                }
+                for (let i = 0; i < yCoords.length; i++) {
+                    if (Math.abs(pos.y - yCoords[i]) < 0.05) { yi = i; break; }
+                }
+                if (xi < 0 || yi < 0) { colIndex++; continue; }
+
+                // Tributary boundaries: half-span to adjacent gridlines in each direction
+                const leftBound = xi === 0 ? xCoords[0] : xCoords[xi] - state.xSpans[xi - 1] / 2;
+                const rightBound = xi === xCoords.length - 1 ? xCoords[xi] : xCoords[xi] + state.xSpans[xi] / 2;
+                const topBound = yi === 0 ? yCoords[0] : yCoords[yi] - state.ySpans[yi - 1] / 2;
+                const bottomBound = yi === yCoords.length - 1 ? yCoords[yi] : yCoords[yi] + state.ySpans[yi] / 2;
+
+                // Convert to pixels
+                const lx = leftBound * state.scale + state.offsetX;
+                const rx = rightBound * state.scale + state.offsetX;
+                const ty = topBound * state.scale + state.offsetY;
+                const by = bottomBound * state.scale + state.offsetY;
+                const tw = rx - lx;
+                const th = by - ty;
+
+                // Tributary area in m²
+                const tribArea = (rightBound - leftBound) * (bottomBound - topBound);
+
+                // Fill tributary zone with color
+                const ci = colIndex % tribColors.length;
+                ctx.fillStyle = tribColors[ci];
+                ctx.fillRect(lx, ty, tw, th);
+
+                // Draw tributary boundary (dashed)
+                ctx.strokeStyle = tribStrokeColors[ci];
+                ctx.lineWidth = 1.5 * scaleFactor;
+                ctx.setLineDash([6 * scaleFactor, 4 * scaleFactor]);
+                ctx.strokeRect(lx, ty, tw, th);
+                ctx.setLineDash([]);
+
+                // Diagonal hatching inside tributary zone (light, 45°)
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(lx, ty, tw, th);
+                ctx.clip();
+                ctx.strokeStyle = tribStrokeColors[ci];
+                ctx.lineWidth = 0.4 * scaleFactor;
+                const hatchSpacing = 18 * scaleFactor;
+                ctx.beginPath();
+                for (let d = -tw; d < tw + th; d += hatchSpacing) {
+                    ctx.moveTo(lx + d, ty);
+                    ctx.lineTo(lx + d + th, ty + th);
+                }
+                ctx.stroke();
+                ctx.restore();
+
+                // Tributary area label (centered in zone)
+                const cx = (lx + rx) / 2;
+                const cy = (ty + by) / 2;
+                const areaStr = `${tribArea.toFixed(1)} m²`;
+                ctx.font = `bold ${fontSize}px Inter`;
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                const atw = ctx.measureText(areaStr).width + 10;
+                ctx.fillStyle = 'rgba(255,255,255,0.85)';
+                ctx.fillRect(cx - atw / 2, cy + 14 * scaleFactor, atw, fontSize + 4);
+                ctx.fillStyle = '#475569';
+                ctx.fillText(areaStr, cx, cy + 14 * scaleFactor + (fontSize + 4) / 2);
+
+                colIndex++;
+            }
+
+            // Draw mid-span boundary lines across the full plan (dashed red)
+            ctx.strokeStyle = 'rgba(220, 38, 38, 0.35)';
+            ctx.lineWidth = 1 * scaleFactor;
+            ctx.setLineDash([4 * scaleFactor, 4 * scaleFactor]);
+            // Vertical mid-span lines
+            for (let i = 0; i < state.xSpans.length; i++) {
+                const mx = (xCoords[i] + state.xSpans[i] / 2) * state.scale + state.offsetX;
+                const yTop = yCoords[0] * state.scale + state.offsetY - 10;
+                const yBot = yCoords[yCoords.length - 1] * state.scale + state.offsetY + 10;
+                ctx.beginPath(); ctx.moveTo(mx, yTop); ctx.lineTo(mx, yBot); ctx.stroke();
+            }
+            // Horizontal mid-span lines
+            for (let i = 0; i < state.ySpans.length; i++) {
+                const my = (yCoords[i] + state.ySpans[i] / 2) * state.scale + state.offsetY;
+                const xLeft = xCoords[0] * state.scale + state.offsetX - 10;
+                const xRight = xCoords[xCoords.length - 1] * state.scale + state.offsetX + 10;
+                ctx.beginPath(); ctx.moveTo(xLeft, my); ctx.lineTo(xRight, my); ctx.stroke();
+            }
+            ctx.setLineDash([]);
+
+            // Draw beam lines (solid, subtle)
+            const currentFloor = state.floors[state.currentFloorIndex];
+            const deletedBeams = currentFloor?.deletedBeams || [];
+            for (let beam of (state.beams || [])) {
+                if (beam.deleted || deletedBeams.includes(beam.id)) continue;
+                const sc = state.columns.find(c => c.id === beam.startCol);
+                const ec = state.columns.find(c => c.id === beam.endCol);
+                if (!sc || !ec) continue;
+                const sp = getColumnPlanPosition(sc), ep = getColumnPlanPosition(ec);
+                ctx.strokeStyle = 'rgba(30, 58, 95, 0.35)'; ctx.lineWidth = 2 * scaleFactor;
+                ctx.beginPath();
+                ctx.moveTo(sp.x * state.scale + state.offsetX, sp.y * state.scale + state.offsetY);
+                ctx.lineTo(ep.x * state.scale + state.offsetX, ep.y * state.scale + state.offsetY);
+                ctx.stroke();
+            }
+
+            // Draw column markers on top (hatched squares like structural plan)
+            let maxLoad = 1;
+            state.columns.forEach(c => { const l = c.totalLoad || 0; if (l > maxLoad) maxLoad = l; });
+
+            for (let col of state.columns) {
+                if (col.active === false) continue;
+                const pos = getColumnPlanPosition(col);
+                const px = pos.x * state.scale + state.offsetX;
+                const py = pos.y * state.scale + state.offsetY;
+                const load = col.totalLoad || 0;
+
+                // Column type classification
+                const totalWidth = state.xSpans.reduce((a, b) => a + b, 0);
+                const totalHeight = state.ySpans.reduce((a, b) => a + b, 0);
+                const onLeft = Math.abs(pos.x) < 0.05;
+                const onRight = Math.abs(pos.x - totalWidth) < 0.05;
+                const onTop = Math.abs(pos.y) < 0.05;
+                const onBottom = Math.abs(pos.y - totalHeight) < 0.05;
+                const isCorner = (onLeft || onRight) && (onTop || onBottom);
+                const isEdge = !isCorner && (onLeft || onRight || onTop || onBottom);
+                let colType = isCorner ? 'Corner' : isEdge ? 'Edge' : 'Interior';
+
+                // Column marker (filled square with hatch)
+                const colSz = 8 * scaleFactor;
+                ctx.fillStyle = '#1e3a5f';
+                ctx.fillRect(px - colSz, py - colSz, colSz * 2, colSz * 2);
+                // Hatch
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 0.8;
+                ctx.beginPath();
+                for (let d = -colSz * 2; d < colSz * 2; d += 3 * scaleFactor) {
+                    ctx.moveTo(px - colSz + d, py - colSz);
+                    ctx.lineTo(px - colSz + d + colSz * 2, py + colSz);
+                }
+                ctx.save(); ctx.beginPath();
+                ctx.rect(px - colSz, py - colSz, colSz * 2, colSz * 2);
+                ctx.clip();
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 0.6;
+                ctx.beginPath();
+                for (let d = -colSz * 2; d < colSz * 4; d += 3 * scaleFactor) {
+                    ctx.moveTo(px - colSz + d, py - colSz);
+                    ctx.lineTo(px - colSz + d + colSz * 2, py + colSz);
+                }
+                ctx.stroke(); ctx.restore();
+
+                // Column ID label
+                ctx.font = `bold ${fontSize}px Inter`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillStyle = 'rgba(255,255,255,0.92)';
+                const idStr = col.id;
+                const idW = ctx.measureText(idStr).width + 8;
+                ctx.fillRect(px - idW / 2, py - colSz - fontSize - 6, idW, fontSize + 4);
+                ctx.strokeStyle = '#1e3a5f'; ctx.lineWidth = 0.6;
+                ctx.strokeRect(px - idW / 2, py - colSz - fontSize - 6, idW, fontSize + 4);
+                ctx.fillStyle = '#1e3a5f';
+                ctx.fillText(idStr, px, py - colSz - fontSize / 2 - 4);
+
+                // Type + Load label below
+                const loadStr = load > 0 ? `${colType} · ${load.toFixed(0)} kN` : `${colType} · TBD`;
+                ctx.font = `${fontSize - 1}px Inter`;
+                const lw = ctx.measureText(loadStr).width + 8;
+                ctx.fillStyle = 'rgba(255,255,255,0.88)';
+                ctx.fillRect(px - lw / 2, py + colSz + 3, lw, fontSize + 2);
+                ctx.fillStyle = load > 0 ? '#b45309' : '#94a3b8';
+                ctx.fillText(loadStr, px, py + colSz + 3 + (fontSize + 2) / 2);
+            }
+
+            // Legend
+            ctx.font = `${fontSize - 1}px Inter`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+            const legY = 44;
+            ctx.fillStyle = 'rgba(220, 38, 38, 0.5)'; ctx.fillRect(12, legY - 1, 20, 2);
+            ctx.setLineDash([3, 3]); ctx.strokeStyle = 'rgba(220, 38, 38, 0.5)'; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(12, legY); ctx.lineTo(32, legY); ctx.stroke(); ctx.setLineDash([]);
+            ctx.fillStyle = '#475569'; ctx.fillText('Mid-span boundary (tributary limit)', 38, legY);
+
+            ctx.fillStyle = tribColors[0]; ctx.fillRect(12, legY + 16, 20, 12);
+            ctx.strokeStyle = tribStrokeColors[0]; ctx.lineWidth = 1; ctx.strokeRect(12, legY + 16, 20, 12);
+            ctx.fillStyle = '#475569'; ctx.fillText('Tributary area zone (per column)', 38, legY + 22);
+        }
+
+        // ========== MVP-010d: BASE REACTIONS PLAN VIEW (Industry Standard) ==========
+        function drawReactionsPlan() {
+            const grid = drawPlanGrid(`Base Reactions — ${state.numFloors || state.floors.length} Storey Cumulative`);
+            if (!grid) return;
+            const { xCoords, yCoords, scaleFactor } = grid;
+            const numFloors = state.numFloors || state.floors.length || 1;
+            const fontSize = Math.max(9, Math.round(10 * scaleFactor));
+
+            // Beam lines (subtle structural frame context)
+            for (let beam of (state.beams || [])) {
+                if (beam.deleted) continue;
+                const sc = state.columns.find(c => c.id === beam.startCol);
+                const ec = state.columns.find(c => c.id === beam.endCol);
+                if (!sc || !ec) continue;
+                const sp = getColumnPlanPosition(sc), ep = getColumnPlanPosition(ec);
+                ctx.strokeStyle = 'rgba(30, 58, 95, 0.2)'; ctx.lineWidth = 2 * scaleFactor;
+                ctx.beginPath();
+                ctx.moveTo(sp.x * state.scale + state.offsetX, sp.y * state.scale + state.offsetY);
+                ctx.lineTo(ep.x * state.scale + state.offsetX, ep.y * state.scale + state.offsetY);
+                ctx.stroke();
+            }
+
+            // Collect reactions data
+            let maxP = 1, totalP = 0, colCount = 0;
+            const supportCols = [];
+            for (let col of state.columns) {
+                if (col.active === false) continue;
+                if (col.startFloor || col.isPlanted) continue;
+                const P = col.totalLoadWithDL || col.totalLoad || 0;
+                if (P > maxP) maxP = P;
+                totalP += P;
+                colCount++;
+                supportCols.push(col);
+            }
+
+            // Draw each support node
+            for (let col of supportCols) {
+                const pos = getColumnPlanPosition(col);
+                const px = pos.x * state.scale + state.offsetX;
+                const py = pos.y * state.scale + state.offsetY;
+                const P = col.totalLoadWithDL || col.totalLoad || 0;
+                const perFloor = col.loadPerFloor || 0;
+                const selfWt = col.selfWeight || 0;
+                const ratio = maxP > 0 ? Math.min(P / maxP, 1) : 0;
+
+                // === Column stub (hatched square like structural plans) ===
+                const colSz = 7 * scaleFactor;
+                ctx.fillStyle = '#1e3a5f';
+                ctx.fillRect(px - colSz, py - colSz, colSz * 2, colSz * 2);
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(px - colSz, py - colSz, colSz * 2, colSz * 2);
+                ctx.clip();
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 0.5;
+                ctx.beginPath();
+                for (let d = -colSz * 2; d < colSz * 4; d += 3 * scaleFactor) {
+                    ctx.moveTo(px - colSz + d, py - colSz);
+                    ctx.lineTo(px - colSz + d + colSz * 2, py + colSz);
+                }
+                ctx.stroke();
+                ctx.restore();
+
+                // === Column ID label (above column stub) ===
+                ctx.font = `bold ${fontSize}px Inter`;
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                const idStr = col.id;
+                const idW = ctx.measureText(idStr).width + 10;
+                const idY = py - colSz - fontSize - 2;
+                ctx.fillStyle = 'rgba(255,255,255,0.92)';
+                ctx.fillRect(px - idW / 2, idY - fontSize / 2 - 2, idW, fontSize + 4);
+                ctx.strokeStyle = '#1e3a5f'; ctx.lineWidth = 0.8;
+                ctx.strokeRect(px - idW / 2, idY - fontSize / 2 - 2, idW, fontSize + 4);
+                ctx.fillStyle = '#1e3a5f';
+                ctx.fillText(idStr, px, idY);
+
+                // === Reaction annotation box (right side of support) ===
+                const boxX = px + colSz + 8 * scaleFactor;
+                const boxY = py - 8 * scaleFactor;
+                const smallFont = Math.max(7, fontSize - 2);
+                ctx.font = `${smallFont}px Inter`;
+                ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+
+                // Build annotation lines
+                const lines = [];
+                lines.push({ text: `P = ${P.toFixed(1)} kN`, bold: true, color: '#b91c1c' });
+                if (numFloors > 1) {
+                    lines.push({ text: `(${perFloor.toFixed(1)} kN/floor × ${numFloors}F)`, bold: false, color: '#64748b' });
+                }
+                if (selfWt > 0) {
+                    lines.push({ text: `Col SW = ${(selfWt * numFloors).toFixed(1)} kN`, bold: false, color: '#64748b' });
+                }
+                lines.push({ text: `Vx, Vy = solver`, bold: false, color: '#94a3b8' });
+                lines.push({ text: `Mx, My = solver`, bold: false, color: '#94a3b8' });
+
+                // Background box
+                let maxTextW = 0;
+                lines.forEach(l => {
+                    ctx.font = l.bold ? `bold ${smallFont}px Inter` : `${smallFont}px Inter`;
+                    const tw = ctx.measureText(l.text).width;
+                    if (tw > maxTextW) maxTextW = tw;
+                });
+                const boxW = maxTextW + 10;
+                const lineH = smallFont + 3;
+                const boxH = lines.length * lineH + 6;
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+                ctx.fillRect(boxX, boxY, boxW, boxH);
+                ctx.strokeStyle = 'rgba(30, 58, 95, 0.3)'; ctx.lineWidth = 0.6;
+                ctx.strokeRect(boxX, boxY, boxW, boxH);
+
+                // Annotation text
+                lines.forEach((l, i) => {
+                    ctx.font = l.bold ? `bold ${smallFont}px Inter` : `${smallFont}px Inter`;
+                    ctx.fillStyle = l.color;
+                    ctx.fillText(l.text, boxX + 5, boxY + 3 + i * lineH);
+                });
+            }
+
+            // === Summary info box (top-right of canvas) ===
+            ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+            const infoX = canvas.width - 240;
+            const infoY = 42;
+            ctx.fillStyle = 'rgba(30, 58, 95, 0.06)';
+            ctx.fillRect(infoX, infoY, 230, 82);
+            ctx.strokeStyle = 'rgba(30, 58, 95, 0.2)'; ctx.lineWidth = 0.8;
+            ctx.strokeRect(infoX, infoY, 230, 82);
+
+            ctx.font = `bold ${fontSize}px Inter`; ctx.fillStyle = '#1e3a5f';
+            ctx.fillText('REACTION SUMMARY', infoX + 8, infoY + 6);
+
+            ctx.font = `${fontSize - 1}px Inter`; ctx.fillStyle = '#475569';
+            ctx.fillText(`Floors: ${numFloors} (${state.floors.map(f => f.id).join(' + ')})`, infoX + 8, infoY + 22);
+            ctx.fillText(`Supports: ${colCount}`, infoX + 8, infoY + 36);
+            ctx.fillText(`ΣP = ${totalP.toFixed(1)} kN (all supports)`, infoX + 8, infoY + 50);
+            ctx.fillText(`P range: ${supportCols.length ? Math.min(...supportCols.map(c => c.totalLoadWithDL || c.totalLoad || 0)).toFixed(0) : 0} — ${maxP.toFixed(0)} kN`, infoX + 8, infoY + 64);
+
+            // === Legend ===
+            const legY = 44;
+            ctx.font = `${fontSize - 1}px Inter`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+            
+            // Support symbol legend (Hatched Square)
+            ctx.fillStyle = '#1e3a5f';
+            ctx.fillRect(12, legY - 4, 8, 8);
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(10, legY - 4); ctx.lineTo(18, legY + 4);
+            ctx.moveTo(14, legY - 4); ctx.lineTo(22, legY + 4);
+            ctx.stroke();
+            ctx.fillStyle = '#475569'; ctx.fillText('Base Support / Column Stub (Plan View)', 28, legY);
+
+            // Reaction load text legend
+            ctx.font = `bold ${fontSize - 1}px Inter`;
+            ctx.fillStyle = '#b91c1c';
+            ctx.fillText('P', 12, legY + 16);
+            ctx.font = `${fontSize - 1}px Inter`;
+            ctx.fillStyle = '#475569'; ctx.fillText(`= Cumulative vertical reaction P (${numFloors}F)`, 24, legY + 16);
         }
 
         // ========== v3.2: FOUNDATION PLAN DRAWING ==========
@@ -10512,9 +11246,13 @@
             }
 
             // v2.6: FOOTINGS - residential baseline uses bearing-sized plan dimensions with 300mm thickness.
+            // SolverLink MVP: Skip footing/pedestal rendering, show base support markers instead
+            const isSolverLinkMode = document.body.classList.contains('solverbridge-mode');
             const footingDepth = state.footingDepth;
             const residentialFootingThick = RESIDENTIAL_FOOTING_THICKNESS_MM / 1000;
 
+            if (!isSolverLinkMode) {
+            // --- Original footing rendering (hidden in SolverLink) ---
             for (let col of state.columns) {
                 // v2.7: Skip footings for inactive columns
                 if (col.active === false) continue;
@@ -10605,6 +11343,33 @@
 
                 scene3D.add(mesh);
                 meshes3D.push(mesh);
+            }
+            } else {
+                // SolverLink MVP: Draw simple base support markers (small inverted pyramids)
+                for (let col of state.columns) {
+                    if (col.active === false) continue;
+                    if (currentViewDeletedColumns.includes(col.id)) continue;
+                    if (col.startFloor || col.isPlanted) continue;
+
+                    const supportSize = 0.25;
+                    const supportH = 0.12;
+                    const geo = new THREE.ConeGeometry(supportSize, supportH, 4);
+                    const mat = new THREE.MeshStandardMaterial({
+                        color: 0x10b981,  // Green for support markers
+                        roughness: 0.6,
+                        metalness: 0.1
+                    });
+                    const mesh = new THREE.Mesh(geo, mat);
+                    mesh.rotation.x = Math.PI;  // Invert cone to point down
+                    mesh.position.set(
+                        col.x + offsetX,
+                        -supportH / 2,
+                        col.y + offsetZ
+                    );
+                    mesh.userData = { type: 'support', id: `S-${col.id}`, floorId: 'GND' };
+                    scene3D.add(mesh);
+                    meshes3D.push(mesh);
+                }
             }
 
             // v3.10: 2D STRUCTURAL GRID AT GROUND LEVEL (Y=0)
@@ -13822,6 +14587,147 @@ function populateBOM() {
         }
 
         // ================================================================
+        //  SOLVERBRIDGE PRE-EXPORT VALIDATION
+        // ================================================================
+        function getEffectiveBeamSize(beam) {
+            const b = beam.b || beam.suggestedB || state.defaultBeamB || 250;
+            const h = beam.h || beam.suggestedH || state.defaultBeamH || 400;
+            if (b <= 0 || isNaN(b) || h <= 0 || isNaN(h)) return null;
+            return { b, h };
+        }
+
+        function getEffectiveColumnSize(col) {
+            const b = col.b || col.suggestedB || state.defaultColumnB || 300;
+            const h = col.h || col.suggestedH || state.defaultColumnH || 300;
+            if (b <= 0 || isNaN(b) || h <= 0 || isNaN(h)) return null;
+            return { b, h };
+        }
+
+        function validateSolverBridgeModel() {
+            let overallStatus = 'ok';
+            const checks = [];
+
+            function addCheck(id, label, isOk, isWarn, msg, affectedIds = []) {
+                let status = 'ok';
+                if (!isOk) {
+                    if (isWarn) {
+                        status = 'warning';
+                        if (overallStatus === 'ok') overallStatus = 'warning';
+                    } else {
+                        status = 'blocked';
+                        overallStatus = 'blocked';
+                    }
+                }
+                checks.push({ id, label, status, message: !isOk ? msg : 'OK', affectedIds });
+            }
+
+            // Project/model exists
+            addCheck('model_exists', 'Model Data Exists', state.xSpans && state.xSpans.length > 0 && state.ySpans && state.ySpans.length > 0, false, 'No grid spans defined.');
+            
+            // Floor count 1-10
+            addCheck('storeys', 'Storey Count (1-10)', state.floors && state.floors.length >= 1 && state.floors.length <= 10, false, `Unsupported floor count: ${state.floors ? state.floors.length : 0}. SolverLink supports 1-10 storeys.`);
+            
+            // Grid spans valid
+            const invalidSpans = [...(state.xSpans || []), ...(state.ySpans || [])].filter(s => s <= 0);
+            addCheck('spans', 'Grid Spans Valid', invalidSpans.length === 0, false, 'Negative or zero grid spans found.');
+            
+            // Columns/beams/slabs exist
+            const colCount = (state.columns || []).filter(c => c.active !== false).length;
+            const beamCount = (state.beams || []).filter(b => !b.deleted).length;
+            const slabCount = (state.slabs || []).length;
+            addCheck('members_exist', 'Members Exist', colCount > 0 && beamCount > 0 && slabCount > 0, false, `Missing core members (Cols: ${colCount}, Beams: ${beamCount}, Slabs: ${slabCount}).`);
+
+            // Base supports
+            const baseCols = (state.columns || []).filter(c => c.active !== false && !c.startFloor && !c.isPlanted);
+            addCheck('supports', 'Base Supports Exist', baseCols.length > 0, false, 'No base-level columns found.');
+
+            // Materials valid
+            addCheck('materials', 'Material Properties', state.fc > 0 && state.fy > 0, false, `Invalid materials (fc': ${state.fc}, fy: ${state.fy}).`);
+
+            // Beam sizes valid
+            const invalidBeams = (state.beams || []).filter(b => !b.deleted && !getEffectiveBeamSize(b));
+            addCheck('beam_sizes', 'Beam Sizes Assigned', invalidBeams.length === 0, false, 'Some beams have missing/invalid sizes.', invalidBeams.map(b => b.id));
+
+            // Column sizes valid
+            const invalidCols = (state.columns || []).filter(c => c.active !== false && !getEffectiveColumnSize(c));
+            addCheck('col_sizes', 'Column Sizes Assigned', invalidCols.length === 0, false, 'Some columns have missing/invalid sizes.', invalidCols.map(c => c.id));
+
+            // No cantilevers
+            const cantilevers = (state.beams || []).filter(b => !b.deleted && b.isCantilever);
+            addCheck('cantilevers', 'No Cantilever Members', cantilevers.length === 0, false, 'Cantilevers are unsupported in MVP.', cantilevers.map(b => b.id));
+
+            // No custom/added/stair beams
+            const customBeams = (state.beams || []).filter(b => !b.deleted && (b.isCustom || b.isStair));
+            addCheck('custom_beams', 'No Custom/Stair Beams', customBeams.length === 0, false, 'Custom topology/stair beams unsupported.', customBeams.map(b => b.id));
+
+            // Deleted/ghost members
+            const deletedBeams = (state.beams || []).filter(b => b.deleted);
+            addCheck('ghosts', 'No Deleted/Ghost Members', deletedBeams.length === 0, false, 'Model contains deleted members. Please purge them or use full version.', deletedBeams.map(b => b.id));
+
+            // Basic gravity loads present
+            const missingLoads = (state.floors || []).filter(f => !f.dlSuper && !f.liveLoad);
+            addCheck('loads', 'Gravity Loads Present', missingLoads.length === 0, false, 'Some floors are missing dead/live loads.', missingLoads.map(f => f.id));
+
+            return { status: overallStatus, checks };
+        }
+
+        function renderValidationPanel() {
+            const contentDiv = document.getElementById('validationContent');
+            if (!contentDiv) return;
+            
+            const result = validateSolverBridgeModel();
+            
+            let html = `
+                <div style="font-family: var(--font-base);">
+                    <div style="margin-bottom: 16px; padding: 12px; border-radius: 6px; background: ${result.status === 'ok' ? 'rgba(40, 167, 69, 0.1)' : result.status === 'warning' ? 'rgba(255, 193, 7, 0.1)' : 'rgba(220, 53, 69, 0.1)'}; border: 1px solid ${result.status === 'ok' ? 'var(--success)' : result.status === 'warning' ? 'var(--warning)' : 'var(--danger)'};">
+                        <h4 style="margin: 0 0 8px 0; color: ${result.status === 'ok' ? 'var(--success)' : result.status === 'warning' ? 'var(--warning)' : 'var(--danger)'};">
+                            EXPORT READINESS: ${result.status.toUpperCase()}
+                        </h4>
+                        <div style="font-size: 0.85rem; color: var(--text-primary);">
+                            ${result.status === 'ok' ? 'Model is ready for STAAD export.' : result.status === 'warning' ? 'Model has warnings but can be exported.' : 'Model contains unsupported features. STAAD export is blocked.'}
+                        </div>
+                    </div>
+                    
+                    <table class="schedule-table" style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th style="width: 100px;">Status</th>
+                                <th style="width: 200px;">Check</th>
+                                <th>Message</th>
+                                <th style="width: 150px;">Affected Members</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            result.checks.forEach(check => {
+                const badgeColor = check.status === 'ok' ? 'var(--success)' : check.status === 'warning' ? 'var(--warning)' : 'var(--danger)';
+                html += `
+                    <tr>
+                        <td><span style="padding: 3px 6px; border-radius: 3px; background: ${badgeColor}; color: #fff; font-size: 0.7rem; font-weight: bold;">${check.status.toUpperCase()}</span></td>
+                        <td style="font-weight: 500;">${check.label}</td>
+                        <td style="color: ${check.status === 'ok' ? 'var(--text-muted)' : 'var(--text-primary)'};">${check.message}</td>
+                        <td style="font-size: 0.75rem; color: var(--text-muted);">${check.affectedIds && check.affectedIds.length > 0 ? check.affectedIds.join(', ') : '-'}</td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                        </tbody>
+                    </table>
+                    
+                    <div style="margin-top: 20px;">
+                        <button class="action-btn" onclick="exportToSTAAD()" ${result.status === 'blocked' ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>
+                            Export to STAAD.Pro
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            contentDiv.innerHTML = html;
+        }
+
+        // ================================================================
         //  STAAD PRO EXPORT (.std)
         //  Compatible with STAAD.Pro 2024 (QA&R)
         // ================================================================
@@ -14043,6 +14949,18 @@ function populateBOM() {
         }
 
         function exportToSTAAD() {
+            const validation = validateSolverBridgeModel();
+            if (validation.status === 'blocked') {
+                const blockers = validation.checks.filter(c => c.status === 'blocked').map(c => `- ${c.label}: ${c.message}`).join('\n');
+                alert('STAAD Export Blocked\n\nThe model contains unsupported features for SolverBridge MVP:\n\n' + blockers + '\n\nUnsupported in SolverBridge MVP; model manually or use full FutolStructure.');
+                return;
+            }
+            if (validation.status === 'warning') {
+                const warnings = validation.checks.filter(c => c.status === 'warning').map(c => `- ${c.label}: ${c.message}`).join('\n');
+                const proceed = confirm('STAAD Export Warnings\n\nThe model contains warnings:\n\n' + warnings + '\n\nDo you want to proceed with export?');
+                if (!proceed) return;
+            }
+
             try {
                 const std = generateSTAADContent();
                 downloadBlob(std, 'TributaryPro_' + new Date().toISOString().split('T')[0] + '.std');
@@ -16806,7 +17724,7 @@ Reference NSCP sections when applicable.Format numbers with units(kN, mm, m).`,
                             <td><input type="number" value="${colW}" onchange="updateColumnParam('${col.id}', 'webB', this.value)" style="width:45px;"></td>
                             <td><input type="number" value="${colD}" onchange="updateColumnParam('${col.id}', 'webD', this.value)" style="width:45px;"></td>
                             <td>${load}</td>
-                            <td>${footingID}</td>
+                            <td class="non-mvp">${footingID}</td>
                         </tr>
                     `;
                 });
@@ -17314,6 +18232,9 @@ Reference NSCP sections when applicable.Format numbers with units(kN, mm, m).`,
                 const tabBtn = document.getElementById('schedTab' + tab.charAt(0).toUpperCase() + tab.slice(1));
                 if (tabBtn) tabBtn.classList.add('active');
 
+                const appContainer = document.getElementById('app-container');
+                if (appContainer) appContainer.classList.add('schedule-mode');
+
                 // Update Panels
                 const beamPanel = document.getElementById('scheduleBeamsPanel');
                 const colPanel = document.getElementById('scheduleColumnsPanel');
@@ -17579,6 +18500,118 @@ Reference NSCP sections when applicable.Format numbers with units(kN, mm, m).`,
         </div>
     </div>
 
-</body>
+    <script>
+        // SolverLink Reactions & Tributary Expansion Population Logic
 
+        window.populateReactions = function() {
+            const tbody = document.getElementById('tbodyReactions');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            
+            let hasColumns = false;
+            
+            if (state.columns) {
+                state.columns.forEach(col => {
+                    if (col.active === false) return;
+                    
+                    hasColumns = true;
+                    const tr = document.createElement('tr');
+                    
+                    let baseP = (col.receivedLoad || 0).toFixed(1);
+                    if (baseP === "0.0" && col.load) baseP = col.load.toFixed(1); // Use col.load if receivedLoad is 0
+                    
+                    tr.innerHTML = `
+                        <td><strong>${col.id}</strong></td>
+                        <td>Node Base-${col.id}</td>
+                        <td>Fixed</td>
+                        <td style="color:#0ea5e9;">${baseP} kN</td>
+                        <td style="color:#64748b;">[TBD]</td>
+                        <td style="color:#64748b;">[TBD]</td>
+                        <td style="color:#64748b;">[TBD]</td>
+                        <td style="color:#64748b;">[TBD]</td>
+                        <td><span style="font-size:0.7rem;background:#fef08a;color:#854d0e;padding:2px 6px;border-radius:4px;">Preliminary</span></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+            
+            if (!hasColumns) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#64748b;padding:20px;">No columns found in model.</td></tr>';
+            }
+        };
+
+        window.populateTribBeams = function() {
+            const tbody = document.getElementById('tbodyTribBeams');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            
+            let hasBeams = false;
+            
+            if (state.beams) {
+                state.beams.forEach(beam => {
+                    if (beam.deleted) return;
+                    hasBeams = true;
+                    const tr = document.createElement('tr');
+                    
+                    const span = (beam.span || 0).toFixed(2);
+                    let tribLoad = (beam.receivedAreaLoad || 0).toFixed(1);
+                    let wallLoad = (beam.customLoad || beam.blockwallLoad || 0).toFixed(1);
+                    
+                    tr.innerHTML = `
+                        <td><strong>${beam.id || 'B-?'}</strong></td>
+                        <td>${state.floors[state.currentFloorIndex]?.name || 'Current'}</td>
+                        <td>${span}</td>
+                        <td style="color:#0ea5e9;">${tribLoad} kN/m</td>
+                        <td>${wallLoad} kN/m</td>
+                        <td>[TBD] kN/m</td>
+                        <td><strong>[TBD] kN/m</strong></td>
+                        <td>[TBD] kN</td>
+                        <td>[TBD] kN</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+            
+            if (!hasBeams) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#64748b;padding:20px;">No active beams found on current floor.</td></tr>';
+            }
+        };
+
+        window.populateTribCols = function() {
+            const tbody = document.getElementById('tbodyTribCols');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            
+            let hasColumns = false;
+            
+            if (state.columns) {
+                state.columns.forEach(col => {
+                    if (col.active === false) return;
+                    hasColumns = true;
+                    const tr = document.createElement('tr');
+                    
+                    let classification = "Interior";
+                    if (col.positionType) classification = col.positionType;
+                    
+                    tr.innerHTML = `
+                        <td><strong>${col.id}</strong></td>
+                        <td>${state.floors[state.currentFloorIndex]?.name || 'Current'}</td>
+                        <td>${classification}</td>
+                        <td style="color:#0ea5e9;">[TBD] kN</td>
+                        <td>[TBD] kN</td>
+                        <td>[TBD] kN</td>
+                        <td>[TBD] kN</td>
+                        <td><strong>[TBD] kN</strong></td>
+                        <td style="color:#ef4444;"><strong>[TBD] kN</strong></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+            
+            if (!hasColumns) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#64748b;padding:20px;">No columns found in model.</td></tr>';
+            }
+        };
+    </script>
+</body>
 </html>
