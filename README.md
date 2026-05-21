@@ -4,7 +4,7 @@
   
   <p>
     <img src="https://img.shields.io/badge/Status-Active-success.svg" alt="Status">
-    <img src="https://img.shields.io/badge/Architecture-Single--File_App-blue.svg" alt="Architecture">
+    <img src="https://img.shields.io/badge/Architecture-Client_JS_Modules-blue.svg" alt="Architecture">
     <img src="https://img.shields.io/badge/Stack-Vanilla_JS_|_Canvas_|_Three.js-orange.svg" alt="Stack">
   </p>
 </div>
@@ -52,14 +52,21 @@ SolverLink is built for ultimate portability and zero-dependency deployment.
 ---
 
 ## 🚀 Getting Started
-Because SolverLink is a lean client-side application, running it requires zero configuration.
+SolverLink is a lean client-side application with local JavaScript engine modules. Run it from a static server so the browser loads `engine/*.js` consistently.
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/solverlink.git
+   git clone https://github.com/michaelfutol/solverlink.git
    ```
-2. Open `index.html` in any modern web browser.
-3. Start modeling.
+2. Serve the folder:
+   ```bash
+   python -m http.server 8000 --bind 127.0.0.1
+   ```
+3. Open `http://127.0.0.1:8000`.
+4. Start modeling.
+
+## SFFA MVP Definition
+SolverLink SFFA MVP is a **regular RC frame generator and STAAD handoff validator**. It is intended to produce a visual model, preliminary tributary/reaction audit, validation report, and STAAD starter file for engineering review. It is not a permit-ready design substitute; the SFFA engineer must verify and complete analysis/design in STAAD/RCDC/manual workflows.
 
 ---
 *Created as part of an engineering technology portfolio.*
